@@ -23,17 +23,15 @@ Import ('plugin_base')
 Import ('env')
 from copy import copy
 
-PLUGIN_NAME = 'postgis+pgraster' # Combined PostGIS and PgRaster input plug-in
+PLUGIN_NAME = 'pgraster'
 
 plugin_env = plugin_base.Clone()
 
 plugin_sources = Split(
   """
-  ../postgis/postgis_datasource.cpp
-  ../postgis/postgis_featureset.cpp
-  ../pgraster/pgraster_datasource.cpp
-  ../pgraster/pgraster_featureset.cpp
-  ../pgraster/pgraster_wkb_reader.cpp
+  %(PLUGIN_NAME)s_datasource.cpp
+  %(PLUGIN_NAME)s_featureset.cpp
+  %(PLUGIN_NAME)s_wkb_reader.cpp
   """ % locals()
 )
 
@@ -45,7 +43,7 @@ if env['RUNTIME_LINK'] == 'static':
     cmd = 'pkg-config libpq --libs --static'
     try:
         plugin_env.ParseConfig(cmd)
-    except OSError as e:
+    except OSError as  e:
         plugin_env.Append(LIBS='pq')
 else:
     plugin_env.Append(LIBS='pq')

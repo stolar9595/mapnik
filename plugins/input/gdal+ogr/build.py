@@ -23,19 +23,19 @@ Import ('plugin_base')
 Import ('env')
 from copy import copy
 
-PLUGIN_NAME = 'gdal+ogr'
+PLUGIN_NAME = 'gdal+ogr' # Combined GDAL and OGR input plug-in
 
 plugin_env = plugin_base.Clone()
 
 plugin_sources = Split(
   """
-  gdal_datasource.cpp
-  gdal_featureset.cpp
-  ogr_converter.cpp
-  ogr_datasource.cpp
-  ogr_utils.cpp
-  ogr_featureset.cpp
-  ogr_index_featureset.cpp
+  ../gdal/gdal_datasource.cpp
+  ../gdal/gdal_featureset.cpp
+  ../ogr/ogr_converter.cpp
+  ../ogr/ogr_datasource.cpp
+  ../ogr/ogr_utils.cpp
+  ../ogr/ogr_featureset.cpp
+  ../ogr/ogr_index_featureset.cpp
   """ % locals()
 )
 
