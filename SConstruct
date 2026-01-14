@@ -746,7 +746,7 @@ def get_pkg_lib(context, config, lib):
     context.Result( libname )
     return libname
 
-def parse_pg_config(context, config):
+def parse_pg_config(context, config, plugin = 'postgis'):
     # TODO - leverage `LDFLAGS_SL` if RUNTIME_LINK==static
     env = context.env
     tool = config.lower()
@@ -1839,7 +1839,7 @@ if not preconfigured:
                         else:
                             details['lib'] = libname
                     else:
-                        conf.parse_pg_config('PG_CONFIG')
+                        conf.parse_pg_config('PG_CONFIG', plugin)
                 elif plugin == 'tiles':
                     if env.get('TILES_INPUT_SSL'):
                         if env.get('OPENSSL_LIBS') or env.get('OPENSSL_INCLUDES'):
