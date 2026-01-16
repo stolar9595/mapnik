@@ -23,35 +23,39 @@ Import ('plugin_base')
 Import ('env')
 from copy import copy
 
-PLUGIN_NAME = 'postgis+pgraster' # Combined PostGIS and PgRaster input plug-in
+PLUGIN_NAME = 'ogr'
 
 plugin_env = plugin_base.Clone()
 
 plugin_sources = Split(
   """
-  ../postgis/postgis_datasource.cpp
-  ../postgis/postgis_featureset.cpp
-  ../pgraster/pgraster_datasource.cpp
-  ../pgraster/pgraster_featureset.cpp
-  ../pgraster/pgraster_wkb_reader.cpp
+  %(PLUGIN_NAME)s_converter.cpp
+  %(PLUGIN_NAME)s_datasource.cpp
+  %(PLUGIN_NAME)s_utils.cpp
+  %(PLUGIN_NAME)s_featureset.cpp
+  %(PLUGIN_NAME)s_index_featureset.cpp
   """ % locals()
 )
 
+
 cxxflags = []
 plugin_env['LIBS'] = []
+plugin_env.Append(LIBS=env['PLUGINS']['ogr']['lib'])
 
 if env['RUNTIME_LINK'] == 'static':
-    # pkg-config is more reliable than pg_config across platforms
+    cmd = '%s --libs --dep-libs' % plugin_env['GDAL_CONFIG']
+    plugin_env.ParseConfig(cmd)
     cmd = 'pkg-config libpq --libs --static'
     try:
         plugin_env.ParseConfig(cmd)
-    except OSError as e:
-        plugin_env.Append(LIBS='pq')
-else:
-    plugin_env.Append(LIBS='pq')
+    except:
+        pass
+
 
 # Link Library to Dependencies
 libraries = copy(plugin_env['LIBS'])
+
+plugin_env.Append(CXXFLAGS=cxxflags)
 
 if env['PLUGIN_LINKING'] == 'shared':
     libraries.insert(0,env['MAPNIK_NAME'])
@@ -71,6 +75,7 @@ if env['PLUGIN_LINKING'] == 'shared':
         env.Alias('install', env['MAPNIK_INPUT_PLUGINS_DEST'])
 
 plugin_obj = {
+  'CXXFLAGS': cxxflags,
   'LIBS': libraries,
   'SOURCES': plugin_sources,
 }

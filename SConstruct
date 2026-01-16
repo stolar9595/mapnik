@@ -78,6 +78,7 @@ DEFAULT_LINK_PRIORITY = ['internal','other','frameworks','user','system']
 pretty_dep_names = {
     'clntsh':'Oracle database library | configure with OCCI_LIBS & OCCI_INCLUDES | more info: https://github.com/mapnik/mapnik/wiki/OCCI',
     'gdal':'GDAL C++ library | configured using gdal-config program | try setting GDAL_CONFIG SCons option | more info: https://github.com/mapnik/mapnik/wiki/GDAL',
+    'ogr':'OGR-enabled GDAL C++ Library | configured using gdal-config program | try setting GDAL_CONFIG SCons option | more info: https://github.com/mapnik/mapnik/wiki/OGR',
     'cairo':'Cairo C library | configured using pkg-config | try setting PKG_CONFIG_PATH SCons option',
     'proj':'Proj C Projections library | configure with PROJ_LIBS & PROJ_INCLUDES | more info: http://trac.osgeo.org/proj/',
     'proj-min-version':'libproj >=%s required' % PROJ_MIN_VERSION_STRING,
@@ -114,8 +115,12 @@ pretty_dep_names = {
 # opts.AddVariables still hardcoded however...
 PLUGINS = { # plugins with external dependencies
     # configured by calling project, hence 'path':None
+    'postgis': {'default':True,'path':None,'inc':'libpq-fe.h','lib':'pq','lang':'C'},
+    'pgraster': {'default':True,'path':None,'inc':'libpq-fe.h','lib':'pq','lang':'C'},
     'postgis+pgraster': {'default':True,'path':None,'inc':'libpq-fe.h','lib':'pq','lang':'C'},
-    'gdal+ogr': {'default':True,'path':None,'inc':'gdal_priv.h','lib':'gdal','lang':'C++'},
+    'gdal': {'default':True,'path':None,'inc':'gdal_priv.h','lib':'gdal','lang':'C++'},
+    'ogr': {'default':True,'path':None,'inc':'ogrsf_frmts.h','lib':'gdal','lang':'C++'},
+    'gdal+ogr': {'default':True,'path':None,'inc':['gdal_priv.h','ogrsf_frmts.h'],'lib':'gdal','lang':'C++'},
     'sqlite':  {'default':True,'path':'SQLITE','inc':'sqlite3.h','lib':'sqlite3','lang':'C'},
     'tiles':   {'default':True,'path':None,'inc':None,'lib':'sqlite3','lang':'C'},
     # plugins without external dependencies requiring CheckLibWithHeader...
@@ -741,7 +746,7 @@ def get_pkg_lib(context, config, lib):
     context.Result( libname )
     return libname
 
-def parse_pg_config(context, config):
+def parse_pg_config(context, config, plugin = 'postgis'):
     # TODO - leverage `LDFLAGS_SL` if RUNTIME_LINK==static
     env = context.env
     tool = config.lower()
@@ -1771,7 +1776,7 @@ if not preconfigured:
             color_print(4,'Checking for requested plugins dependencies...')
             for plugin in env['REQUESTED_PLUGINS']:
                 details = env['PLUGINS'][plugin]
-                if plugin == 'gdal+ogr':
+                if plugin == 'gdal':
                     if conf.parse_config('GDAL_CONFIG',checks='--libs'):
                         conf.parse_config('GDAL_CONFIG',checks='--cflags')
                         libname = conf.get_pkg_lib('GDAL_CONFIG','gdal')
@@ -1782,7 +1787,43 @@ if not preconfigured:
                                      env['LIBS'].remove(libname)
                             else:
                                 details['lib'] = libname
-                elif plugin == 'postgis+pgraster':
+                elif plugin == 'ogr':
+                    if conf.ogr_enabled():
+                        if conf.parse_config('GDAL_CONFIG',checks='--libs'):
+                            conf.parse_config('GDAL_CONFIG',checks='--cflags')
+                            libname = conf.get_pkg_lib('GDAL_CONFIG','ogr')
+                            if libname:
+                                if not conf.CheckLibWithHeader(libname, details['inc'], details['lang']):
+                                    if 'gdal' not in env['SKIPPED_DEPS']:
+                                        env['SKIPPED_DEPS'].append('gdal')
+                                    if libname in env['LIBS']:
+                                         env['LIBS'].remove(libname)
+                                else:
+                                    details['lib'] = libname
+                elif plugin == 'gdal+ogr':
+                   if conf.parse_config('GDAL_CONFIG',checks='--libs'):
+                        conf.parse_config('GDAL_CONFIG',checks='--cflags')
+                        libname = conf.get_pkg_lib('GDAL_CONFIG','gdal')
+                        if libname:
+                            if not conf.CheckLibWithHeader(libname, details['inc'], details['lang']):
+                                env['SKIPPED_DEPS'].append('gdal')
+                                if libname in env['LIBS']:
+                                     env['LIBS'].remove(libname)
+                            else:
+                                details['lib'] = libname
+                    # if conf.ogr_enabled():
+                    #     if conf.parse_config('GDAL_CONFIG',checks='--libs'):
+                    #         conf.parse_config('GDAL_CONFIG',checks='--cflags')
+                    #         libname = conf.get_pkg_lib('GDAL_CONFIG','ogr')
+                    #         if libname:
+                    #             if not conf.CheckLibWithHeader(libname, details['inc'], details['lang']):
+                    #                 if 'gdal' not in env['SKIPPED_DEPS']:
+                    #                     env['SKIPPED_DEPS'].append('gdal')
+                    #                 if libname in env['LIBS']:
+                    #                      env['LIBS'].remove(libname)
+                    #             else:
+                    #                 details['lib'] = libname
+                elif plugin == 'postgis' or plugin == 'pgraster' or plugin == 'postgis+pgraster':
                     if env.get('PG_LIBS') or env.get('PG_INCLUDES'):
                         libname = details['lib']
                         if env.get('PG_INCLUDES'):
@@ -1798,20 +1839,7 @@ if not preconfigured:
                         else:
                             details['lib'] = libname
                     else:
-                        conf.parse_pg_config('PG_CONFIG')
-                elif plugin == 'ogr':
-                    if conf.ogr_enabled():
-                        if conf.parse_config('GDAL_CONFIG',checks='--libs'):
-                            conf.parse_config('GDAL_CONFIG',checks='--cflags')
-                            libname = conf.get_pkg_lib('GDAL_CONFIG','ogr')
-                            if libname:
-                                if not conf.CheckLibWithHeader(libname, details['inc'], details['lang']):
-                                    if 'gdal' not in env['SKIPPED_DEPS']:
-                                        env['SKIPPED_DEPS'].append('gdal')
-                                    if libname in env['LIBS']:
-                                         env['LIBS'].remove(libname)
-                                else:
-                                    details['lib'] = libname
+                        conf.parse_pg_config('PG_CONFIG', plugin)
                 elif plugin == 'tiles':
                     if env.get('TILES_INPUT_SSL'):
                         if env.get('OPENSSL_LIBS') or env.get('OPENSSL_INCLUDES'):
@@ -2224,9 +2252,27 @@ if not HELP_REQUESTED:
 
     # Build the requested and able-to-be-compiled input plug-ins
     GDAL_BUILT = False
+    OGR_BUILT = False
     POSTGIS_BUILT = False
+    PGRASTER_BUILT = False
     SQLITE_BUILT = False
     TILES_BUILT = False
+
+    # remove redundant plug-ins
+    if 'postgis+pgraster' in env['REQUESTED_PLUGINS']:
+        if 'postgis' in env['REQUESTED_PLUGINS']:
+            color_print(3,"Warning: removing 'postgis' as combined 'postgis+pgraster' is requested")
+            env['REQUESTED_PLUGINS'].remove('postgis')
+        if 'pgraster' in env['REQUESTED_PLUGINS']:
+            color_print(3,"Warning: removing 'pgraster' as combined 'postgis+pgraster' is requested")
+            env['REQUESTED_PLUGINS'].remove('pgraster')
+    if 'gdal+ogr' in env['REQUESTED_PLUGINS']:
+        if 'gdal' in env['REQUESTED_PLUGINS']:
+            color_print(3,"Warning: removing 'gdal' as combined gdal+ogr' is requested")
+            env['REQUESTED_PLUGINS'].remove('gdal')
+        if 'ogr' in env['REQUESTED_PLUGINS']:
+            color_print(3,"Warning: removing 'ogr' as combined gdal+ogr' is requested")
+            env['REQUESTED_PLUGINS'].remove('ogr')
 
     for plugin in env['PLUGINS']:
         if env['PLUGIN_LINKING'] == 'static' or plugin not in env['REQUESTED_PLUGINS']:
@@ -2238,15 +2284,24 @@ if not HELP_REQUESTED:
                 if env['PLUGIN_LINKING'] == 'shared':
                     SConscript('plugins/input/%s/build.py' % plugin)
                 # hack to avoid breaking on plugins with the same dep
-                if plugin == 'gdal+ogr': GDAL_BUILT = True
-                if plugin == 'postgis+pgraster': POSTGIS_BUILT = True
+                if plugin == 'ogr': OGR_BUILT = True
+                if plugin == 'gdal': GDAL_BUILT = True
+                if plugin == 'gdal+ogr':
+                    OGR_BUILT = True
+                    GDAL_BUILT = True
+                if plugin == 'postgis': POSTGIS_BUILT = True
+                if plugin == 'pgraster': PGRASTER_BUILT = True
+                if plugin == 'postgis+pgraster':
+                     POSTGIS_BUILT = True
+                     PGRASTER_BUILT = True
                 if plugin == 'sqlite': SQLITE_BUILT = True
                 if plugin == 'tiles': TILES_BUILT = True
-                if plugin == 'gdal+ogr':
-                    if GDAL_BUILT:
+
+                if plugin == 'gdal' or plugin == 'ogr' or plugin == 'gdal+ogr':
+                    if GDAL_BUILT and OGR_BUILT:
                         env['LIBS'].remove(details['lib'])
-                elif plugin == 'postgis+pgraster':
-                    if POSTGIS_BUILT:
+                elif plugin == 'postgis' or plugin == 'pgraster' or plugin == 'postgis+pgraster':
+                    if POSTGIS_BUILT and PGRASTER_BUILT:
                         env['LIBS'].remove(details['lib'])
                 elif plugin == 'sqlite' or plugin == 'tiles':
                     if SQLITE_BUILT and TILES_BUILT:

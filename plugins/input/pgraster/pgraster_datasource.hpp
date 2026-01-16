@@ -48,9 +48,9 @@
 #include <string>
 #include <memory>
 
-// fwd decl
-class ConnectionManager;
-class IResultSet;
+#include "../postgis/connection_manager.hpp"
+#include "../postgis/asyncresultset.hpp"
+#include "../postgis/cursorresultset.hpp"
 
 using mapnik::box2d;
 using mapnik::coord2d;

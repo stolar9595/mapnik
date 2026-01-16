@@ -24,9 +24,6 @@
  *
  *****************************************************************************/
 
-#include "connection_manager.hpp"
-#include "asyncresultset.hpp"
-#include "cursorresultset.hpp"
 #include "pgraster_datasource.hpp"
 #include "pgraster_featureset.hpp"
 
