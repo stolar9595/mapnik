@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/mapbox/geometry" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/mapbox/mapnik-vector-tile" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/mapbox/mapnik-vector-tile/test/geometry-test-data" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/mapbox/polylabel" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/mapbox/polylabel/.mason" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/mapbox/protozero" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/mapbox/variant" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/mapbox/variant/.mason" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/test/data" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/test/data-visual" vcs="Git" />
+  </component>
+</project>
