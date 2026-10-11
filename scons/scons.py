@@ -25,15 +25,15 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE
 
-__revision__ = "scripts/scons.py 39a12f34d532ab2493e78a7b73aeab2250852790 Thu, 27 Mar 2025 11:44:24 -0700 bdbaddog"
+__revision__ = "scripts/scons.py b97f32b9adab83a96af767ec1d7dc8d7a41c7c74 Wed, 26 Aug 2026 21:18:42 -0700 bdbaddog"
 
-__version__ = "4.9.1"
+__version__ = "4.11.1"
 
-__build__ = "39a12f34d532ab2493e78a7b73aeab2250852790"
+__build__ = "b97f32b9adab83a96af767ec1d7dc8d7a41c7c74"
 
 __buildsys__ = "M1Dog2021"
 
-__date__ = "Thu, 27 Mar 2025 11:44:24 -0700"
+__date__ = "Wed, 26 Aug 2026 21:18:42 -0700"
 
 __developer__ = "bdbaddog"
 
@@ -95,9 +95,3 @@ if __name__ == "__main__":
     # this does all the work, and calls sys.exit
     # with the proper exit status when done.
     SCons.Script.main()
-
-# Local Variables:
-# tab-width:4
-# indent-tabs-mode:nil
-# End:
-# vim: set expandtab tabstop=4 shiftwidth=4:

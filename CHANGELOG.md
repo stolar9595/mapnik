@@ -6,6 +6,104 @@ Developers: Please commit along with changes.
 
 For a complete change history, see the git log.
 
+## Mapnik 4.3.2
+
+Released September 23th, 2026
+
+(Packaged from [140657ee1](https://github.com/mapnik/mapnik/commit/140657ee1))
+
+- NDEBUG patch a58d1e0f3bd37dd9761ac55a64e9732d1741d838
+- Use row_accessor for AGG rendering buffers 5e2bc6741d9cd2769f35b738c8d09f79ff86a885
+- Vectorize source-over span blending cba876537b7b2a09754e761f5cf4ce71f0203ebb
+- Composite only painted style buffer regions 49c1c15c4c6081968a80ed0f4b5549decf61825e
+- Batch repeated colors during PNG quantization c3b5e7e38642c29abe1936c20c54ecaf6610f66d
+- Cache FreeType glyph metrics b0fee164544a42bfd2cd075cdd41f704024f41f5
+- Use a grid for label collisions c9aa4ea45f232e59627439c5906c44cf1183845c
+- Reuse HarfBuzz fonts c2d5b8788b15d47d3de4ee350323ee9dc28ff5de
+- Skip ICU converters for ASCII strings 2ccc351cd57e56aef3d77aa6217015ef6dd22d57
+- Bound SVG opacity buffers to marker extents d77e4dfea6087963d7b2d852348e0f62f1b0a9a9
+- Skip redundant FreeType size updates 7194bfa03a5a286d99c88f5ea5bdcd6a90979414
+- Allocate PNG hextree nodes in blocks 7d2e517b981d05e4e5c74b4136f9f60878ffcbc7
+- Cache text shaping results 34d9f178e6112e4980afb427464990a0af1cfe6
+- Avoid constructing unused layer projections 583e8bde0c17f46b751285cb55c50272448b5e56
+- Precompute PNG palette sort keys 6d43396c72891e191ed3bd7858588bc619419101
+- Pre-size PNG palette caches a9b7a1c013ad3952b63562683fc972f80fb5d545
+- Cache resolved font sets f0fe7b0367c4273284c6271ba4dd446b866504e6
+- Clear only used style buffer regions 73cfc6e66e95fabc7b4a06d66984c72de0dc793f
+- Scan transparent buffer edges in blocks 02f312a21aa942f92558b5e70eed71473c9ab617
+- Avoid duplicate PNG palette cache lookups a2d3bf4c5a42646213ad912483f5eaf6afee7313
+- Avoid copying font sets during shaping d7d28fa01885b023c34f668e77a4fca27baac198
+- Format unicode conversion test e9f223546f2c590bffa63cce6e810adefe23913a
+- Fix and add regression test d4564c85e12d6bb3a8d7d7dba4ea8ebfa8b57b9f
+- Fix built-in marker dimensions without a viewBox transform 72f51f32a0c59328d9ab351e595bf30eee54d83f
+- Refresh rule attribute indices when feature contexts grow ba7378126c9947548ff33410fc5178ca4c97a573
+- Cache rasterized SVG polygon patterns fcf101d0bdce986bd362915ed9d3f29ef2388d43 f3e23563acb91195b5f121a905208acaf2b53cd7
+- Honor `stroke-dashoffset` on line symbolizers in the AGG and Cairo renderers,
+  including negative offsets, expressions, and rendering scale factors.
+- Allow CI to run on PRs and in forks 140657ee10b10e666306405cd01bd0e0557e7b74
+
+
+## Mapnik 4.3.1
+
+Released August 28th, 2026
+
+(Packaged from [38c207ee0](https://github.com/mapnik/mapnik/commit/38c207ee0))
+
+- CMake build - enable NDEBUG by default
+- Avoid copying expression attributes e1e6d31808877171d14c74d5974b923cce423595
+- Compare string literals directly d0ed0964ad9d6c23cee6171656b002d1304fff40
+- Hash feature attribute lookups d744e094b451a12b070173547f638b896d1386d8
+- Prioritize common expression nodes e981e4b43ed57aa209175626777735036f97cc88
+- Evaluate filters as booleans d59329887dc708612a670117e562070f15634b63
+- Index rules by filter value 508dd835252b5a523bffef076b6779b0c21e4588
+- Store PostGIS attributes by index 40c36ee0125a7056af617f607bda61e9eb21bf08
+- Correction for "Rendering complex Unicode sequences across multiple fonts in a fontset" PR #4574
+- Upgrade SCons to v4.11.1
+
+## Mapnik 4.3.0
+
+Released July 24th, 2026
+
+(Packaged from [2b7d513a0](https://github.com/mapnik/mapnik/commit/2b7d513a0))
+
+- Fix PostGIS async connection pool churn (#4520)
+- Rendering complex Unicode sequences across multiple fonts in a fontset (PR #4554)(PR #4556)
+- tiles.input - better auto VT compression inference.
+- Use C++ port of polylabel v2.1.0 (https://github.com/mapnik/polylabel)
+- Add `!unbuffered_bbox!` SQL token to the `postgis` and `pgraster` plugins.
+  It expands to the metatile boundary — the same extent as `!bbox!` but
+  without `buffer-size` padding. Clipped to `!bbox!` so it is never larger.
+  Containment via `ST_Covers(!unbuffered_bbox!, way)` is guaranteed when
+  the map SRS and the layer SRS are the same.
+- Replace remaining boost::optional<T> with std::optional<T> (triggers ABIs changes).
+  NOTE: revisit implementation when std::optional<T&> becomes available (c++26).
+
+## Mapnik 4.2.2
+
+Released March 30th, 2026
+
+(Packaged from [23567fcef](https://github.com/mapnik/mapnik/commit/23567fcef))
+
+- SCons build - remove boost_system
+- Fix "modulo by zero" exceptions  by returning `mapnik::value_null` when rhs is zero (cosistent with `div` implementation)
+  (including specialisations using `std::fmod` which return NAN if rhs is zero https://en.cppreference.com/w/cpp/numeric/math/fmod) (ref #4545)
+- Return vector<string> from plugin_directories method
+- pgraster.input - fix stderr messages
+- Fix warning - identifier '_case' preceded by whitespace in a literal operator declaration is deprecated
+- Update vcpkg to 2026.03.18
+- Update github actions (node24) https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+
+
+## Mapnik 4.2.1
+
+Released January 28th, 2026
+
+(Packaged from [441f7adc4](https://github.com/mapnik/mapnik/commit/441f7adc4))
+
+- Updated input plug-ins infostructure allowing building both combined (where appropriate e.g 'postgis+pgraster', 'gdal+ogr') and separate ('postgis', 'pgraster', 'gdal', 'ogr') plug-ins.
+
+- Update Scons to v4.10.1
+
 ## Mapnik 4.2.0
 
 Released December 30th, 2025

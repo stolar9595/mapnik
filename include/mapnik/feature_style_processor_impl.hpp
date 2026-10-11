@@ -47,6 +47,8 @@
 #include <mapnik/symbolizer_dispatch.hpp>
 
 // stl
+#include <algorithm>
+#include <span>
 #include <vector>
 #include <stdexcept>
 
@@ -57,7 +59,6 @@ struct layer_rendering_material
 {
     layer const& lay_;
     projection const& proj0_;
-    projection proj1_;
     box2d<double> layer_ext2_;
     std::vector<feature_type_style const*> active_styles_;
     std::vector<featureset_ptr> featureset_ptr_list_;
@@ -66,8 +67,7 @@ struct layer_rendering_material
 
     layer_rendering_material(layer const& lay, projection const& dest)
         : lay_(lay),
-          proj0_(dest),
-          proj1_(lay.srs(), true)
+          proj0_(dest)
     {}
 
     layer_rendering_material(layer_rendering_material&& rhs) = default;
@@ -243,8 +243,9 @@ void feature_style_processor<Processor>::prepare_layer(layer_rendering_material&
     }
 
     processor_context_ptr current_ctx = ds->get_context(ctx_map);
-    proj_transform const* proj_trans_ptr = proj_transform_cache::get(mat.proj0_.params(), mat.proj1_.params());
+    proj_transform const* proj_trans_ptr = proj_transform_cache::get(mat.proj0_.params(), lay.srs());
     box2d<double> query_ext = extent;            // unbuffered
+    box2d<double> unbuffered_query_ext = extent; // metatile, reprojected below for !unbuffered_bbox!
     box2d<double> buffered_query_ext(query_ext); // buffered
 
     double buffer_padding = 2.0 * scale * p.scale_factor();
@@ -310,18 +311,18 @@ void feature_style_processor<Processor>::prepare_layer(layer_rendering_material&
         // https://github.com/mapnik/mapnik/issues/1477
         for (std::string const& style_name : style_names)
         {
-            boost::optional<feature_type_style const&> style = m_.find_style(style_name);
+            std::optional<std::reference_wrapper<feature_type_style const>> style = m_.find_style(style_name);
             if (!style)
             {
                 continue;
             }
 
-            if (style->comp_op() || style->image_filters().size() > 0)
+            if (style->get().comp_op() || style->get().image_filters().size() > 0)
             {
-                if (style->active(scale_denom))
+                if (style->get().active(scale_denom))
                 {
                     // we'll have to handle compositing ops
-                    active_styles.push_back(&(*style));
+                    active_styles.push_back(&style->get());
                 }
             }
         }
@@ -354,13 +355,19 @@ void feature_style_processor<Processor>::prepare_layer(layer_rendering_material&
         }
     }
 
+    // !unbuffered_bbox! is the metatile boundary forward-projected into the
+    // layer SRS, then intersected with the final !bbox! so it can never be
+    // larger than !bbox!.
+    proj_trans_ptr->forward(unbuffered_query_ext, PROJ_ENVELOPE_POINTS);
+    unbuffered_query_ext = unbuffered_query_ext.intersect(layer_ext);
+
     std::vector<rule_cache>& rule_caches = mat.rule_caches_;
     attribute_collector collector(names);
 
     // iterate through all named styles collecting active styles and attribute names
     for (std::string const& style_name : style_names)
     {
-        boost::optional<feature_type_style const&> style = m_.find_style(style_name);
+        std::optional<std::reference_wrapper<feature_type_style const>> style = m_.find_style(style_name);
         if (!style)
         {
             MAPNIK_LOG_ERROR(feature_style_processor) << "feature_style_processor: Style=" << style_name
@@ -369,7 +376,7 @@ void feature_style_processor<Processor>::prepare_layer(layer_rendering_material&
             continue;
         }
 
-        std::vector<rule> const& style_rules = style->get_rules();
+        std::vector<rule> const& style_rules = style->get().get_rules();
         bool active_rules = false;
         rule_cache rc;
         for (rule const& r : style_rules)
@@ -384,7 +391,7 @@ void feature_style_processor<Processor>::prepare_layer(layer_rendering_material&
         if (active_rules)
         {
             rule_caches.push_back(std::move(rc));
-            active_styles.push_back(&(*style));
+            active_styles.push_back(&style->get());
         }
     }
 
@@ -398,7 +405,7 @@ void feature_style_processor<Processor>::prepare_layer(layer_rendering_material&
     double qh = query_ext.height() > 0 ? query_ext.height() : 1;
     query::resolution_type res(width / qw, height / qh);
 
-    query q(layer_ext, res, scale_denom, extent);
+    query q(layer_ext, res, scale_denom, unbuffered_query_ext);
     q.set_variables(p.variables());
 
     if (p.attribute_collection_policy() == COLLECT_ALL)
@@ -483,7 +490,7 @@ void feature_style_processor<Processor>::render_material(layer_rendering_materia
     layer const& lay = mat.lay_;
 
     std::vector<rule_cache> const& rule_caches = mat.rule_caches_;
-    proj_transform const* proj_trans_ptr = proj_transform_cache::get(mat.proj0_.params(), mat.proj1_.params());
+    proj_transform const* proj_trans_ptr = proj_transform_cache::get(mat.proj0_.params(), lay.srs());
     bool cache_features = lay.cache_features() && active_styles.size() > 1;
 
     datasource_ptr ds = lay.datasource();
@@ -598,16 +605,72 @@ void feature_style_processor<Processor>::render_style(Processor& p,
     mapnik::attributes vars = p.variables();
     feature_ptr feature;
     bool was_painted = false;
+
+    rule_cache::rule_ptrs const& if_rules = rc.get_if_rules();
+    std::span<std::size_t const> rules_without_precondition = rc.get_rules_without_precondition();
+    using resolved_group = std::pair<std::size_t, rule_cache::precondition_values const*>;
+    std::vector<resolved_group> precondition_groups;
+    rule_cache::rule_indices candidates;
+    context_type const* cached_context = nullptr;
+    context_type::size_type cached_context_size = 0;
+
     while ((feature = features->next()))
     {
+        context_type const* ctx = feature->context().get();
+        // Streaming datasources can add properties to a shared context between features.
+        if (ctx != cached_context || ctx->size() != cached_context_size)
+        {
+            cached_context = ctx;
+            cached_context_size = ctx->size();
+            precondition_groups.clear();
+            precondition_groups.reserve(rc.get_precondition_groups().size());
+            for (rule_cache::precondition_group const& group : rc.get_precondition_groups())
+            {
+                precondition_groups.emplace_back(ctx->find_index(group.name), &group.rules);
+            }
+        }
+
+        std::span<std::size_t const> candidate_rules;
+        if (precondition_groups.empty())
+        {
+            candidate_rules = rules_without_precondition;
+        }
+        else if (precondition_groups.size() == 1 && rules_without_precondition.empty())
+        {
+            resolved_group const& group = precondition_groups.front();
+            value_type const& actual =
+              group.first == context_type::npos ? default_feature_value : feature->get(group.first);
+            auto const match = group.second->find(actual);
+            if (match != group.second->end())
+            {
+                candidate_rules = match->second;
+            }
+        }
+        else
+        {
+            candidates.assign(rules_without_precondition.begin(), rules_without_precondition.end());
+            for (resolved_group const& group : precondition_groups)
+            {
+                value_type const& actual =
+                  group.first == context_type::npos ? default_feature_value : feature->get(group.first);
+                auto const match = group.second->find(actual);
+                if (match != group.second->end())
+                {
+                    candidates.insert(candidates.end(), match->second.begin(), match->second.end());
+                }
+            }
+            // Restore stylesheet order after merging groups.
+            std::sort(candidates.begin(), candidates.end());
+            candidate_rules = candidates;
+        }
+
         bool do_else = true;
         bool do_also = false;
-        for (rule const* r : rc.get_if_rules())
+        for (std::size_t index : candidate_rules)
         {
+            rule const* r = if_rules[index];
             expression_ptr const& expr = r->get_filter();
-            value_type result =
-              util::apply_visitor(evaluate<feature_impl, value_type, attributes>(*feature, vars), *expr);
-            if (result.to_bool())
+            if (util::apply_visitor(evaluate_boolean<feature_impl, value_type, attributes>(*feature, vars), *expr))
             {
                 was_painted = true;
                 do_else = false;
