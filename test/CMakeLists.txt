@@ -37,6 +37,8 @@ add_executable(mapnik-test-unit
     ../plugins/input/ogr/ogr_utils.cpp
     unit/datasource/ogr.cpp
     unit/datasource/postgis.cpp
+    unit/datasource/postgis_featureset.cpp
+    ../plugins/input/postgis/postgis_featureset.cpp
     unit/datasource/shapeindex.cpp
     unit/datasource/spatial_index.cpp
     unit/datasource/topojson.cpp
@@ -88,6 +90,7 @@ add_executable(mapnik-test-unit
     unit/svg/svg_parser_test.cpp
     unit/svg/svg_path_parser_test.cpp
     unit/svg/svg_renderer_test.cpp
+    unit/symbolizer/arc_symbolizer_test.cpp
     unit/symbolizer/marker_placement_vertex_last.cpp
     unit/symbolizer/markers_point_placement.cpp
     unit/symbolizer/symbolizer_test.cpp

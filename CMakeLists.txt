@@ -10,7 +10,7 @@ project(mapnik
     VERSION ${MAPNIK_MAJOR_VERSION}.${MAPNIK_MINOR_VERSION}.${MAPNIK_PATCH_VERSION}
     HOMEPAGE_URL "https://mapnik.org/"
     DESCRIPTION "Mapnik is an open source toolkit for developing mapping applications"
-    LANGUAGES CXX
+    LANGUAGES CXX C
 )
 message(STATUS "mapnik version: ${PROJECT_VERSION}")
 
@@ -417,6 +417,11 @@ add_compile_options(
     "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>"
     "$<$<CXX_COMPILER_ID:MSVC>:/EHsc>"
 )
+
+# Don't let the compiler fuse a multiply and an add into one instruction on its own. GCC does it by default
+# on aarch64 but cannot on baseline x86-64, and where it does it the result depends on how code was inlined,
+# so the same map rendered slightly differently on different machines. Explicit std::fma is unaffected.
+add_compile_options("$<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-ffp-contract=off>")
 
 add_library(core INTERFACE)
 add_library(mapnik::core ALIAS core)
